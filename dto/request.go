@@ -115,16 +115,19 @@ type PembatasanUpdateRequest struct {
 }
 
 type UserCreateRequest struct {
-	Nama   string `json:"nama" validate:"required,min=2,max=100"`
-	Email  string `json:"email" validate:"required,email,max=100"`
+	Nama     string `json:"nama" validate:"required,min=2,max=100"`
+	Email    string `json:"email" validate:"required,email,max=100"`
 	Password string `json:"password" validate:"required,min=6,max=100"`
-	RoleID *uint    `json:"role_id,omitempty"`
+	RoleID   *uint  `json:"role_id,omitempty"`
+	ParokiID *uint  `json:"paroki_id,omitempty"`
 }
 
 type UserUpdateRequest struct {
-	Nama    *string `json:"nama,omitempty" validate:"omitempty,min=2,max=100"`
-	Email   *string `json:"email,omitempty" validate:"omitempty,email,max=100"`
-	RoleID  *uint    `json:"role_id,omitempty"`
+	Nama     *string `json:"nama,omitempty" validate:"omitempty,min=2,max=100"`
+	Email    *string `json:"email,omitempty" validate:"omitempty,email,max=100"`
+	Password *string `json:"password,omitempty" validate:"omitempty,min=6,max=100"`
+	RoleID   *uint   `json:"role_id,omitempty"`
+	ParokiID *uint   `json:"paroki_id,omitempty"`
 }
 
 type ListQuery struct {

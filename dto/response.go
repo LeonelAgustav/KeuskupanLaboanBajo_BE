@@ -24,6 +24,8 @@ type DetilJurnalResp struct {
 	Debit      *float64         `json:"debit,omitempty"`
 	Kredit     *float64         `json:"kredit,omitempty"`
 	Keterangan *string          `json:"keterangan,omitempty"`
+	CreatedBy  *uint            `json:"created_by,omitempty"`
+	UpdatedBy  *uint            `json:"updated_by,omitempty"`
 	CreatedAt  time.Time        `json:"created_at"`
 	UpdatedAt  time.Time        `json:"updated_at"`
 }
@@ -43,6 +45,8 @@ type JurnalResponse struct {
 	Deskripsi   *string            `json:"deskripsi,omitempty"`
 	NoBukti     *string            `json:"no_bukti,omitempty"`
 	DetilJurnal []DetilJurnalResp  `json:"detil_jurnal,omitempty"`
+	CreatedBy   *uint              `json:"created_by,omitempty"`
+	UpdatedBy   *uint              `json:"updated_by,omitempty"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
 }
@@ -83,12 +87,14 @@ type RoleResponse struct {
 }
 
 type UserResponse struct {
-	ID        uint         `json:"id"`
-	Nama      string       `json:"nama"`
-	Email     string       `json:"email"`
+	ID        uint          `json:"id"`
+	Nama      string        `json:"nama"`
+	Email     string        `json:"email"`
 	Role      *RoleResponse `json:"role,omitempty"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
+	ParokiID  *uint         `json:"paroki_id,omitempty"`
+	Paroki    *ParokiResponse `json:"paroki,omitempty"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
 }
 
 type ListResponse struct {

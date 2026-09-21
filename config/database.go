@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"KeuskupanLaboanBajo_BE/models"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -101,6 +102,7 @@ func ConnectDB() *gorm.DB {
 			log.Fatalf("❌ Gagal AutoMigrate: %v", err)
 		}
 		seedRoles(db)
+		seedUsers(db)
 		log.Println("✅ Koneksi database berhasil + AutoMigrate OK!")
 		return db
 	}
@@ -149,6 +151,7 @@ func ConnectDB() *gorm.DB {
 	}
 
 	seedRoles(db)
+	seedUsers(db)
 
 	log.Println("✅ Koneksi database berhasil + AutoMigrate OK!")
 	return db
@@ -165,6 +168,32 @@ func seedRoles(db *gorm.DB) {
 			} else {
 				log.Printf("✅ Role %s seeded", nama)
 			}
+		}
+	}
+}
+
+func seedUsers(db *gorm.DB) {
+	// Find SUPERADMIN role
+	var role models.Role
+	if err := db.Where("nama = ?", "SUPERADMIN").First(&role).Error; err != nil {
+		log.Printf("⚠️ Gagal seed user: role SUPERADMIN tidak ditemukan")
+		return
+	}
+
+	var count int64
+	db.Model(&models.User{}).Where("email = ?", "superadmin@keuskupan.test").Count(&count)
+	if count == 0 {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		user := models.User{
+			Nama:         "Super Admin",
+			Email:        "superadmin@keuskupan.test",
+			PasswordHash: string(hash),
+			RoleID:       &role.ID,
+		}
+		if err := db.Create(&user).Error; err != nil {
+			log.Printf("⚠️ Gagal seed superadmin: %v", err)
+		} else {
+			log.Printf("✅ Superadmin seeded (email: superadmin@keuskupan.test, pass: password123)")
 		}
 	}
 }

@@ -3,9 +3,12 @@ package controllers
 import (
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"KeuskupanLaboanBajo_BE/models"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -96,9 +99,24 @@ func (s *SyncController) Push(c echo.Context) error {
 					if v, ok := it.Payload["no_bukti"].(string); ok && v != "" {
 						j.NoBukti = &v
 					}
+					if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
+						if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {
+							uid32 := uint(uid)
+							j.CreatedBy = &uid32
+						}
+					}
 					if err := tx.Create(&j).Error; err != nil {
-						log.Printf("⚠️ Create jurnal %s error: %v", it.RowID, err)
-						continue
+						if j.NoBukti != nil && strings.Contains(err.Error(), "Duplicate") {
+							newNb := *j.NoBukti + "-" + it.RowID[:4]
+							j.NoBukti = &newNb
+							if err2 := tx.Create(&j).Error; err2 != nil {
+								log.Printf("⚠️ Create jurnal %s error (retry): %v", it.RowID, err2)
+								continue
+							}
+						} else {
+							log.Printf("⚠️ Create jurnal %s error: %v", it.RowID, err)
+							continue
+						}
 					}
 				} else {
 					updates := map[string]interface{}{"updated_at": time.Now()}
@@ -107,6 +125,11 @@ func (s *SyncController) Push(c echo.Context) error {
 					}
 					if v, ok := it.Payload["no_bukti"].(string); ok {
 						updates["no_bukti"] = v
+					}
+					if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
+						if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {
+							updates["updated_by"] = uint(uid)
+						}
 					}
 					tx.Model(&models.Jurnal{}).Where("id = ?", it.RowID).Updates(updates)
 				}
@@ -225,6 +248,42 @@ func (s *SyncController) Push(c echo.Context) error {
 				}
 				r.Nama = nama
 				tx.Create(&r)
+			case "users":
+				if it.Operation == "delete" {
+					if id := strToUint(it.RowID); id != 0 {
+						tx.Where("id = ?", id).Delete(&models.User{})
+					}
+					continue
+				}
+				nama, _ := it.Payload["nama"].(string)
+				email, _ := it.Payload["email"].(string)
+				password, _ := it.Payload["password"].(string)
+				roleID := strToUint(it.Payload["role_id"])
+				if nama == "" || email == "" {
+					continue
+				}
+				var u models.User
+				if err := tx.Where("email = ?", email).First(&u).Error; err == nil {
+					updates := map[string]interface{}{"nama": nama, "email": email, "updated_at": time.Now()}
+					if roleID != 0 {
+						updates["role_id"] = roleID
+					}
+					if password != "" {
+						hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+						updates["password_hash"] = string(hash)
+					}
+					tx.Model(&models.User{}).Where("id = ?", u.ID).Updates(updates)
+					continue
+				}
+				hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+				u.Nama = nama
+				u.Email = email
+				u.PasswordHash = string(hash)
+				if roleID != 0 {
+					uid := roleID
+					u.RoleID = &uid
+				}
+				tx.Create(&u)
 			case "detil_jurnals":
 				if it.Operation == "delete" {
 					if id := strToUint(it.RowID); id != 0 {
@@ -249,6 +308,12 @@ func (s *SyncController) Push(c echo.Context) error {
 					if v, ok := it.Payload["kredit"].(float64); ok {
 						d.Kredit = &v
 					}
+					if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
+						if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {
+							uid32 := uint(uid)
+							d.CreatedBy = &uid32
+						}
+					}
 					if v, ok := it.Payload["keterangan"].(string); ok {
 						d.Keterangan = &v
 					}
@@ -260,6 +325,11 @@ func (s *SyncController) Push(c echo.Context) error {
 					}
 					if v, ok := it.Payload["kredit"].(float64); ok {
 						updates["kredit"] = v
+					}
+					if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
+						if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {
+							updates["updated_by"] = uint(uid)
+						}
 					}
 					tx.Model(&models.DetilJurnal{}).Where("id = ?", d.ID).Updates(updates)
 				}
@@ -292,6 +362,14 @@ func (s *SyncController) Pull(c echo.Context) error {
 
 	var jurnals []models.Jurnal
 	q := s.db.Preload("DetilJurnal").Where("updated_at > ?", since).Order("updated_at ASC").Limit(100)
+	// MEMBER hanya bisa pull jurnal milik paroki mereka
+	if role, _ := c.Get("role").(string); role == "MEMBER" {
+		if pidStr, _ := c.Get("paroki_id").(string); pidStr != "" {
+			if pid, err := strconv.ParseUint(pidStr, 10, 32); err == nil && pid != 0 {
+				q = q.Where("id IN (SELECT DISTINCT jurnal_id FROM detil_jurnal WHERE paroki_id = ? AND deleted_at IS NULL)", pid)
+			}
+		}
+	}
 	if err := q.Find(&jurnals).Error; err != nil {
 		return err
 	}
@@ -309,9 +387,18 @@ func (s *SyncController) Pull(c echo.Context) error {
 	s.db.Where("updated_at > ?", since).Find(&akuns)
 	var roles []models.Role
 	s.db.Where("updated_at > ?", since).Find(&roles)
+	var users []models.User
+	userQuery := s.db.Preload("Role").Where("updated_at > ?", since)
+	if role, _ := c.Get("role").(string); role == "ADMIN" {
+		var superRole models.Role
+		if err := s.db.Where("nama = ?", "SUPERADMIN").First(&superRole).Error; err == nil {
+			userQuery = userQuery.Where("role_id != ? OR role_id IS NULL", superRole.ID)
+		}
+	}
+	userQuery.Find(&users)
 
-	log.Printf("📤 Pull result: jurnals=%d, deleted=%d, keuskupans=%d, parokis=%d, jenis=%d, akuns=%d, roles=%d",
-		len(jurnals), len(deleted), len(keuskupans), len(parokis), len(jenisList), len(akuns), len(roles))
+	log.Printf("📤 Pull result: jurnals=%d, deleted=%d, keuskupans=%d, parokis=%d, jenis=%d, akuns=%d, roles=%d, users=%d",
+		len(jurnals), len(deleted), len(keuskupans), len(parokis), len(jenisList), len(akuns), len(roles), len(users))
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"since":      since,
@@ -323,5 +410,6 @@ func (s *SyncController) Pull(c echo.Context) error {
 		"jenis":      jenisList,
 		"akuns":      akuns,
 		"roles":      roles,
+		"users":      users,
 	})
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"KeuskupanLaboanBajo_BE/dto"
@@ -43,6 +44,13 @@ func (c *UserController) List(ctx echo.Context) error {
 		search := "%" + query.Search + "%"
 		db = db.Where("nama ILIKE ? OR email ILIKE ?", search, search)
 	}
+	// ADMIN tidak boleh lihat SUPERADMIN
+	if role, _ := ctx.Get("role").(string); role == "ADMIN" {
+		var superRole models.Role
+		if err := c.db.Where("nama = ?", "SUPERADMIN").First(&superRole).Error; err == nil {
+			db = db.Where("role_id != ? OR role_id IS NULL", superRole.ID)
+		}
+	}
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -67,6 +75,7 @@ func (c *UserController) List(ctx echo.Context) error {
 			Nama:      u.Nama,
 			Email:     u.Email,
 			Role:      toRoleResponse(u.Role),
+			ParokiID:  u.ParokiID,
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 		}
@@ -100,6 +109,7 @@ func (c *UserController) Get(ctx echo.Context) error {
 		Nama:      user.Nama,
 		Email:     user.Email,
 		Role:      toRoleResponse(user.Role),
+		ParokiID:  user.ParokiID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	})
@@ -114,10 +124,20 @@ func (c *UserController) Create(ctx echo.Context) error {
 		return err
 	}
 
+	// ADMIN tidak boleh buat SUPERADMIN
+	if req.RoleID != nil {
+		var r models.Role
+		if err := c.db.First(&r, *req.RoleID).Error; err == nil && r.Nama == "SUPERADMIN" {
+			if role, _ := ctx.Get("role").(string); role == "ADMIN" {
+				return echo.NewHTTPError(http.StatusForbidden, "ADMIN tidak boleh membuat user SUPERADMIN")
+			}
+		}
+	}
 	user := models.User{
-		Nama:   req.Nama,
-		Email:  req.Email,
-		RoleID: req.RoleID,
+		Nama:     req.Nama,
+		Email:    req.Email,
+		RoleID:   req.RoleID,
+		ParokiID: req.ParokiID,
 	}
 
 	if err := c.db.Create(&user).Error; err != nil {
@@ -140,6 +160,7 @@ func (c *UserController) Create(ctx echo.Context) error {
 			Nama:      user.Nama,
 			Email:     user.Email,
 			Role:      toRoleResponse(role),
+			ParokiID:  user.ParokiID,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 		},
@@ -168,14 +189,39 @@ func (c *UserController) Update(ctx echo.Context) error {
 		return err
 	}
 
+	// Validate MEMBER must have paroki_id
+	targetRoleID := user.RoleID
+	if req.RoleID != nil {
+		targetRoleID = req.RoleID
+	}
+	if targetRoleID != nil {
+		var role models.Role
+		if err := c.db.First(&role, *targetRoleID).Error; err == nil && role.Nama == "MEMBER" {
+			targetParokiID := user.ParokiID
+			if req.ParokiID != nil {
+				targetParokiID = req.ParokiID
+			}
+			if targetParokiID == nil || *targetParokiID == 0 {
+				return echo.NewHTTPError(http.StatusBadRequest, "MEMBER wajib memilih paroki")
+			}
+		}
+	}
+
 	if req.Nama != nil {
 		user.Nama = *req.Nama
 	}
 	if req.Email != nil {
 		user.Email = *req.Email
 	}
+	if req.Password != nil && *req.Password != "" {
+		hash, _ := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
+		user.PasswordHash = string(hash)
+	}
 	if req.RoleID != nil {
 		user.RoleID = req.RoleID
+	}
+	if req.ParokiID != nil {
+		user.ParokiID = req.ParokiID
 	}
 
 	if err := c.db.Save(&user).Error; err != nil {
@@ -198,6 +244,7 @@ func (c *UserController) Update(ctx echo.Context) error {
 			Nama:      user.Nama,
 			Email:     user.Email,
 			Role:      toRoleResponse(role),
+			ParokiID:  user.ParokiID,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 		},

@@ -20,20 +20,26 @@ func JWTSecret() []byte {
 }
 
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role,omitempty"`
+	UserID   string `json:"user_id"`
+	Email    string `json:"email"`
+	Role     string `json:"role,omitempty"`
+	ParokiID string `json:"paroki_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint, email, role string) (access, refresh string, err error) {
+func GenerateToken(userID uint, email, role string, parokiID ...uint) (access, refresh string, err error) {
 	uid := strconv.FormatUint(uint64(userID), 10)
+	pid := ""
+	if len(parokiID) > 0 && parokiID[0] != 0 {
+		pid = strconv.FormatUint(uint64(parokiID[0]), 10)
+	}
 	// ponytail: 1 tahun biar tidak sering login di lapangan
 	oneYear := 365 * 24 * time.Hour
 	accessClaims := Claims{
-		UserID: uid,
-		Email:  email,
-		Role:   role,
+		UserID:   uid,
+		Email:    email,
+		Role:     role,
+		ParokiID: pid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(oneYear)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -41,9 +47,10 @@ func GenerateToken(userID uint, email, role string) (access, refresh string, err
 		},
 	}
 	refreshClaims := Claims{
-		UserID: uid,
-		Email:  email,
-		Role:   role,
+		UserID:   uid,
+		Email:    email,
+		Role:     role,
+		ParokiID: pid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(oneYear)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -84,6 +91,8 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		c.Set("user_id", claims.UserID)
 		c.Set("email", claims.Email)
+		c.Set("role", claims.Role)
+		c.Set("paroki_id", claims.ParokiID)
 		return next(c)
 	}
 }

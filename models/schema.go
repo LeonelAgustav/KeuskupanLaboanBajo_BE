@@ -19,6 +19,8 @@ type User struct {
 	PasswordHash string `gorm:"not null;size:255"`
 	RoleID    *uint    `gorm:"index"`
 	Role      *Role    `gorm:"foreignKey:RoleID;references:ID"`
+	ParokiID  *uint    `gorm:"index"`
+	Paroki    *Paroki  `gorm:"foreignKey:ParokiID;references:ID"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -70,16 +72,20 @@ type Akun struct {
 }
 
 type Jurnal struct {
-	ID          string        `gorm:"primaryKey;size:36"`
-	KeuskupanID uint          `gorm:"index;not null"`
-	Keuskupan   Keuskupan     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:KeuskupanID;references:ID"`
-	DetilJurnal []DetilJurnal `gorm:"foreignKey:JurnalID"`
-	Tanggal     time.Time     `gorm:"index;not null"`
-	Deskripsi   *string       `gorm:"size:500"`
-	NoBukti     *string       `gorm:"uniqueIndex;size:50"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	ID            string        `gorm:"primaryKey;size:36"`
+	KeuskupanID   uint          `gorm:"index;not null"`
+	Keuskupan     Keuskupan     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:KeuskupanID;references:ID"`
+	DetilJurnal   []DetilJurnal `gorm:"foreignKey:JurnalID"`
+	Tanggal       time.Time     `gorm:"index;not null"`
+	Deskripsi     *string       `gorm:"size:500"`
+	NoBukti       *string       `gorm:"uniqueIndex;size:50"`
+	CreatedBy     *uint         `gorm:"index"`
+	CreatedByUser *User         `gorm:"foreignKey:CreatedBy;references:ID"`
+	UpdatedBy     *uint         `gorm:"index"`
+	UpdatedByUser *User         `gorm:"foreignKey:UpdatedBy;references:ID"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
 }
 
 func (j *Jurnal) BeforeCreate(tx *gorm.DB) error {
@@ -93,19 +99,23 @@ func (j *Jurnal) BeforeCreate(tx *gorm.DB) error {
 }
 
 type DetilJurnal struct {
-	ID         uint     `gorm:"primaryKey"`
-	JurnalID   string   `gorm:"index;not null;size:36"`
-	Jurnal     Jurnal   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:JurnalID;references:ID"`
-	AkunID     uint     `gorm:"index;not null"`
-	Akun       Akun     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunID;references:ID"`
-	ParokiID   uint     `gorm:"index;not null"`
-	Paroki     Paroki   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:ParokiID;references:ID"`
-	Debit      *float64 `gorm:"type:decimal(15,2);default:0"`
-	Kredit     *float64 `gorm:"type:decimal(15,2);default:0"`
-	Keterangan *string
-	CreatedAt  time.Time `gorm:"index"`
-	UpdatedAt  time.Time
-	DeletedAt  gorm.DeletedAt `gorm:"index"`
+	ID            uint     `gorm:"primaryKey"`
+	JurnalID      string   `gorm:"index;not null;size:36"`
+	Jurnal        Jurnal   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:JurnalID;references:ID"`
+	AkunID        uint     `gorm:"index;not null"`
+	Akun          Akun     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunID;references:ID"`
+	ParokiID      uint     `gorm:"index;not null"`
+	Paroki        Paroki   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:ParokiID;references:ID"`
+	Debit         *float64 `gorm:"type:decimal(15,2);default:0"`
+	Kredit        *float64 `gorm:"type:decimal(15,2);default:0"`
+	Keterangan    *string
+	CreatedBy     *uint    `gorm:"index"`
+	CreatedByUser *User    `gorm:"foreignKey:CreatedBy;references:ID"`
+	UpdatedBy     *uint    `gorm:"index"`
+	UpdatedByUser *User    `gorm:"foreignKey:UpdatedBy;references:ID"`
+	CreatedAt     time.Time `gorm:"index"`
+	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
 }
 
 type Pembatasan struct {

@@ -15,7 +15,7 @@ func RegisterRoutes(e *echo.Echo, db *gorm.DB) {
 	e.Use(middleware.Recover())
 	// ponytail: CORS untuk app+web 1 codebase (flutter web di localhost:*)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     []string{"http://localhost:*","http://127.0.0.1:*","http://localhost:8080","http://127.0.0.1:8080"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 		AllowCredentials: true,
@@ -23,9 +23,9 @@ func RegisterRoutes(e *echo.Echo, db *gorm.DB) {
 
 	api := e.Group("/api/v1")
 
-	// User routes
+	// User routes (proteksi JWT biar bisa cek role)
 	userController := controllers.NewUserController(db)
-	users := api.Group("/users")
+	users := api.Group("/users", localMw.JWTMiddleware)
 	users.POST("", userController.Create)
 	users.GET("", userController.List)
 	users.GET("/:id", userController.Get)
@@ -88,7 +88,7 @@ func RegisterRoutes(e *echo.Echo, db *gorm.DB) {
 
 	// Jurnal routes
 	jurnalController := controllers.NewJurnalController(db)
-	jurnals := api.Group("/jurnal")
+	jurnals := api.Group("/jurnal", localMw.JWTMiddleware)
 	jurnals.POST("", jurnalController.Create)
 	jurnals.GET("", jurnalController.List)
 	jurnals.GET("/:id", jurnalController.Get)

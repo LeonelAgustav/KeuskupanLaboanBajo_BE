@@ -1,1 +1,4 @@
 .env
+*.exe
+*.zip
+*.env.example
