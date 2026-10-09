@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func (c *PembatasanController) List(ctx echo.Context) error {
 
 	if query.Search != "" {
 		search := "%" + query.Search + "%"
-		db = db.Where("tipe ILIKE ?", search)
+		db = db.Where("tipe LIKE ?", search)
 	}
 
 	var total int64
@@ -49,7 +50,16 @@ func (c *PembatasanController) List(ctx echo.Context) error {
 	offset := (query.Page - 1) * query.Limit
 	orderBy := "id DESC"
 	if query.Sort != "" {
-		orderBy = query.Sort
+		allowedSorts := map[string]string{
+			"id": "id", "id asc": "id ASC", "id desc": "id DESC",
+			"tipe": "tipe", "tipe asc": "tipe ASC", "tipe desc": "tipe DESC",
+			"akun_id": "akun_id", "akun_id asc": "akun_id ASC", "akun_id desc": "akun_id DESC",
+			"created_at": "created_at", "created_at asc": "created_at ASC", "created_at desc": "created_at DESC",
+			"updated_at": "updated_at", "updated_at asc": "updated_at ASC", "updated_at desc": "updated_at DESC",
+		}
+		if val, ok := allowedSorts[strings.ToLower(query.Sort)]; ok {
+			orderBy = val
+		}
 	}
 
 	var pembatasans []models.Pembatasan

@@ -13,17 +13,18 @@ import (
 // - DetilJurnal.JurnalID: string (FK ke Jurnal)
 
 type User struct {
-	ID        uint   `gorm:"primaryKey"`
-	Nama      string `gorm:"not null;size:255"`
-	Email     string `gorm:"uniqueIndex;not null;size:255"`
-	PasswordHash string `gorm:"not null;size:255"`
-	RoleID    *uint    `gorm:"index"`
-	Role      *Role    `gorm:"foreignKey:RoleID;references:ID"`
-	ParokiID  *uint    `gorm:"index"`
-	Paroki    *Paroki  `gorm:"foreignKey:ParokiID;references:ID"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID           uint   `gorm:"primaryKey"`
+	Nama         string `gorm:"not null;size:255"`
+	Email        string `gorm:"uniqueIndex;not null;size:255"`
+	PasswordHash string `gorm:"not null;size:255" json:"-"`
+	TokenVersion uint   `gorm:"default:1;not null"`
+	RoleID       *uint  `gorm:"index"`
+	Role         *Role  `gorm:"foreignKey:RoleID;references:ID"`
+	ParokiID     *uint  `gorm:"index"`
+	Paroki       *Paroki `gorm:"foreignKey:ParokiID;references:ID"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
 }
 
 type Keuskupan struct {
@@ -72,7 +73,7 @@ type Akun struct {
 }
 
 type Jurnal struct {
-	ID            string        `gorm:"primaryKey;size:36"`
+	ID            string        `gorm:"primaryKey;size:50"`
 	KeuskupanID   uint          `gorm:"index;not null"`
 	Keuskupan     Keuskupan     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:KeuskupanID;references:ID"`
 	DetilJurnal   []DetilJurnal `gorm:"foreignKey:JurnalID"`
@@ -100,7 +101,7 @@ func (j *Jurnal) BeforeCreate(tx *gorm.DB) error {
 
 type DetilJurnal struct {
 	ID            uint     `gorm:"primaryKey"`
-	JurnalID      string   `gorm:"index;not null;size:36"`
+	JurnalID      string   `gorm:"index;not null;size:50"`
 	Jurnal        Jurnal   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:JurnalID;references:ID"`
 	AkunID        uint     `gorm:"index;not null"`
 	Akun          Akun     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunID;references:ID"`
@@ -136,4 +137,16 @@ type Role struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+type AuditLog struct {
+	ID        uint      `gorm:"primaryKey"`
+	UserID    *uint     `gorm:"index"`
+	User      *User     `gorm:"foreignKey:UserID;references:ID"`
+	Action    string    `gorm:"size:20;not null;index"` // INSERT, UPDATE, DELETE
+	TableName string    `gorm:"size:50;not null;index"`
+	RowID     string    `gorm:"size:64;not null;index"`
+	Payload   string    `gorm:"type:text"`
+	IPAddress string    `gorm:"size:45"`
+	CreatedAt time.Time `gorm:"index"`
 }

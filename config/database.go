@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/url"
@@ -98,6 +100,7 @@ func ConnectDB() *gorm.DB {
 			&models.Jurnal{},
 			&models.DetilJurnal{},
 			&models.Pembatasan{},
+			&models.AuditLog{},
 		); err != nil {
 			log.Fatalf("❌ Gagal AutoMigrate: %v", err)
 		}
@@ -146,6 +149,7 @@ func ConnectDB() *gorm.DB {
 		&models.Jurnal{},
 		&models.DetilJurnal{},
 		&models.Pembatasan{},
+		&models.AuditLog{},
 	); err != nil {
 		log.Fatalf("❌ Gagal AutoMigrate: %v", err)
 	}
@@ -183,7 +187,22 @@ func seedUsers(db *gorm.DB) {
 	var count int64
 	db.Model(&models.User{}).Where("email = ?", "superadmin@keuskupan.test").Count(&count)
 	if count == 0 {
-		hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		seedPass := os.Getenv("SEED_ADMIN_PASS")
+		randomGenerated := false
+		if seedPass == "" {
+			b := make([]byte, 12)
+			if _, err := rand.Read(b); err != nil {
+				log.Printf("⚠️ Gagal generate random password untuk superadmin: %v", err)
+				return
+			}
+			seedPass = hex.EncodeToString(b)
+			randomGenerated = true
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(seedPass), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("⚠️ Gagal hash password superadmin: %v", err)
+			return
+		}
 		user := models.User{
 			Nama:         "Super Admin",
 			Email:        "superadmin@keuskupan.test",
@@ -193,7 +212,12 @@ func seedUsers(db *gorm.DB) {
 		if err := db.Create(&user).Error; err != nil {
 			log.Printf("⚠️ Gagal seed superadmin: %v", err)
 		} else {
-			log.Printf("✅ Superadmin seeded (email: superadmin@keuskupan.test, pass: password123)")
+			log.Printf("✅ Superadmin seeded (email: superadmin@keuskupan.test)")
+			if randomGenerated {
+				log.Printf("⚠️ Password random digenerate — segera reset password superadmin, tidak ditampilkan di log")
+			} else {
+				log.Printf("⚠️ Password diambil dari SEED_ADMIN_PASS — pastikan nilai tersebut aman")
+			}
 		}
 	}
 }

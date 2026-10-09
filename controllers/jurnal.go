@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -41,7 +42,7 @@ func (c *JurnalController) List(ctx echo.Context) error {
 
 	if query.Search != "" {
 		search := "%" + query.Search + "%"
-		db = db.Where("deskripsi ILIKE ? OR no_bukti ILIKE ?", search, search)
+		db = db.Where("deskripsi LIKE ? OR no_bukti LIKE ?", search, search)
 	}
 
 	if keuskupanID := ctx.QueryParam("keuskupan_id"); keuskupanID != "" {
@@ -65,7 +66,15 @@ func (c *JurnalController) List(ctx echo.Context) error {
 	offset := (query.Page - 1) * query.Limit
 	orderBy := "tanggal DESC, created_at DESC"
 	if query.Sort != "" {
-		orderBy = query.Sort
+		allowedSorts := map[string]string{
+			"tanggal": "tanggal", "tanggal asc": "tanggal ASC", "tanggal desc": "tanggal DESC",
+			"created_at": "created_at", "created_at asc": "created_at ASC", "created_at desc": "created_at DESC",
+			"updated_at": "updated_at", "updated_at asc": "updated_at ASC", "updated_at desc": "updated_at DESC",
+			"no_bukti": "no_bukti", "no_bukti asc": "no_bukti ASC", "no_bukti desc": "no_bukti DESC",
+		}
+		if val, ok := allowedSorts[strings.ToLower(query.Sort)]; ok {
+			orderBy = val
+		}
 	}
 
 	var jurals []models.Jurnal
@@ -374,12 +383,39 @@ func (c *JurnalController) Update(ctx echo.Context) error {
 	}
 
 	err := c.db.Transaction(func(tx *gorm.DB) error {
-		// ... (Check exists code)
-		// ... (Build update query code)
+		var jurnal models.Jurnal
+		if err := tx.Raw("SELECT id, keuskupan_id FROM jurnal WHERE id = ? AND deleted_at IS NULL", id).Scan(&jurnal).Error; err != nil {
+			return err
+		}
+		if jurnal.ID == "" {
+			return echo.NewHTTPError(http.StatusNotFound, "Jurnal tidak ditemukan")
+		}
+
+		updates := map[string]interface{}{"updated_at": time.Now()}
+		if req.KeuskupanID != nil {
+			updates["keuskupan_id"] = *req.KeuskupanID
+		}
+		if req.Tanggal != nil {
+			updates["tanggal"] = req.Tanggal.Time
+		}
+		if req.Deskripsi != nil {
+			updates["deskripsi"] = *req.Deskripsi
+		}
+		if req.NoBukti != nil {
+			updates["no_bukti"] = *req.NoBukti
+		}
+		if updatedBy != nil {
+			updates["updated_by"] = *updatedBy
+		}
+		if len(updates) > 1 {
+			if err := tx.Model(&models.Jurnal{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+				return err
+			}
+		}
 		
 		if req.DetilJurnal != nil {
 			// Delete old detil_jurnal
-			if err := tx.Exec("DELETE FROM detil_jurnal WHERE jurnal_id = ?", id).Error; err != nil {
+			if err := tx.Where("jurnal_id = ?", id).Delete(&models.DetilJurnal{}).Error; err != nil {
 				return err
 			}
 			// Insert new detil_jurnal
@@ -484,7 +520,16 @@ func (c *JurnalController) ListDetil(ctx echo.Context) error {
 	offset := (query.Page - 1) * query.Limit
 	orderBy := "id ASC"
 	if query.Sort != "" {
-		orderBy = query.Sort
+		allowedSorts := map[string]string{
+			"id": "id", "id asc": "id ASC", "id desc": "id DESC",
+			"akun_id": "akun_id", "akun_id asc": "akun_id ASC", "akun_id desc": "akun_id DESC",
+			"paroki_id": "paroki_id", "paroki_id asc": "paroki_id ASC", "paroki_id desc": "paroki_id DESC",
+			"created_at": "created_at", "created_at asc": "created_at ASC", "created_at desc": "created_at DESC",
+			"updated_at": "updated_at", "updated_at asc": "updated_at ASC", "updated_at desc": "updated_at DESC",
+		}
+		if val, ok := allowedSorts[strings.ToLower(query.Sort)]; ok {
+			orderBy = val
+		}
 	}
 
 	var detils []models.DetilJurnal

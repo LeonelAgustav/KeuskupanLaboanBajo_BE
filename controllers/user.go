@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -38,11 +39,11 @@ func (c *UserController) List(ctx echo.Context) error {
 		query.Limit = 100
 	}
 
-	db := c.db.Model(&models.User{}).Preload("Role")
+	db := c.db.Model(&models.User{}).Preload("Role").Preload("Paroki")
 
 	if query.Search != "" {
 		search := "%" + query.Search + "%"
-		db = db.Where("nama ILIKE ? OR email ILIKE ?", search, search)
+		db = db.Where("nama LIKE ? OR email LIKE ?", search, search)
 	}
 	// ADMIN tidak boleh lihat SUPERADMIN
 	if role, _ := ctx.Get("role").(string); role == "ADMIN" {
@@ -60,7 +61,17 @@ func (c *UserController) List(ctx echo.Context) error {
 	offset := (query.Page - 1) * query.Limit
 	orderBy := "id DESC"
 	if query.Sort != "" {
-		orderBy = query.Sort
+		s := query.Sort
+		allowedSorts := map[string]string{
+			"id": "id", "id asc": "id ASC", "id desc": "id DESC",
+			"nama": "nama", "nama asc": "nama ASC", "nama desc": "nama DESC",
+			"email": "email", "email asc": "email ASC", "email desc": "email DESC",
+			"created_at": "created_at", "created_at asc": "created_at ASC", "created_at desc": "created_at DESC",
+			"updated_at": "updated_at", "updated_at asc": "updated_at ASC", "updated_at desc": "updated_at DESC",
+		}
+		if val, ok := allowedSorts[strings.ToLower(s)]; ok {
+			orderBy = val
+		}
 	}
 
 	var user []models.User
@@ -97,7 +108,7 @@ func (c *UserController) Get(ctx echo.Context) error {
 	}
 
 	var user models.User
-	if err := c.db.Preload("Role").First(&user, id).Error; err != nil {
+	if err := c.db.Preload("Role").Preload("Paroki").First(&user, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return echo.NewHTTPError(http.StatusNotFound, "User tidak ditemukan")
 		}
@@ -216,9 +227,11 @@ func (c *UserController) Update(ctx echo.Context) error {
 	if req.Password != nil && *req.Password != "" {
 		hash, _ := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 		user.PasswordHash = string(hash)
+		user.TokenVersion++ // invalidate old JWTs on password change
 	}
 	if req.RoleID != nil {
 		user.RoleID = req.RoleID
+		user.TokenVersion++ // invalidate old JWTs on role change
 	}
 	if req.ParokiID != nil {
 		user.ParokiID = req.ParokiID

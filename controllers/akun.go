@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func (c *AkunController) List(ctx echo.Context) error {
 
 	if query.Search != "" {
 		search := "%" + query.Search + "%"
-		db = db.Where("kode ILIKE ? OR nama ILIKE ?", search, search)
+		db = db.Where("kode LIKE ? OR nama LIKE ?", search, search)
 	}
 
 	var total int64
@@ -49,7 +50,18 @@ func (c *AkunController) List(ctx echo.Context) error {
 	offset := (query.Page - 1) * query.Limit
 	orderBy := "id DESC"
 	if query.Sort != "" {
-		orderBy = query.Sort
+		s := query.Sort
+		allowedSorts := map[string]string{
+			"id": "id", "id asc": "id ASC", "id desc": "id DESC",
+			"kode": "kode", "kode asc": "kode ASC", "kode desc": "kode DESC",
+			"nama": "nama", "nama asc": "nama ASC", "nama desc": "nama DESC",
+			"jenis_id": "jenis_id", "jenis_id asc": "jenis_id ASC", "jenis_id desc": "jenis_id DESC",
+			"created_at": "created_at", "created_at asc": "created_at ASC", "created_at desc": "created_at DESC",
+			"updated_at": "updated_at", "updated_at asc": "updated_at ASC", "updated_at desc": "updated_at DESC",
+		}
+		if val, ok := allowedSorts[strings.ToLower(s)]; ok {
+			orderBy = val
+		}
 	}
 
 	var akuns []models.Akun

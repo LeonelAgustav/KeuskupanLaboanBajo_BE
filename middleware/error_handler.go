@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -21,9 +22,16 @@ func ErrorHandler(err error, c echo.Context) {
 	case *echo.HTTPError:
 		code = e.Code
 		resp.Code = "HTTP_ERROR"
-		resp.Message = e.Message.(string)
+		if s, ok := e.Message.(string); ok {
+			resp.Message = s
+		} else {
+			resp.Message = "HTTP error"
+		}
 		if e.Internal != nil {
-			resp.Message = e.Internal.Error()
+			log.Printf("[ERROR] internal error: %v", e.Internal)
+			if code >= http.StatusInternalServerError {
+				resp.Message = "Terjadi kesalahan internal"
+			}
 		}
 	case validator.ValidationErrors:
 		code = http.StatusBadRequest
@@ -37,7 +45,8 @@ func ErrorHandler(err error, c echo.Context) {
 			}
 		}
 	default:
-		resp.Message = err.Error()
+		log.Printf("[ERROR] unhandled error: %v", err)
+		resp.Message = "Terjadi kesalahan internal"
 	}
 
 	if !c.Response().Committed {

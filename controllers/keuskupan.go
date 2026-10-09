@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func (c *KeuskupanController) List(ctx echo.Context) error {
 
 	if query.Search != "" {
 		search := "%" + query.Search + "%"
-		db = db.Where("nama ILIKE ? OR alamat ILIKE ?", search, search)
+		db = db.Where("nama LIKE ? OR alamat LIKE ?", search, search)
 	}
 
 	var total int64
@@ -49,7 +50,15 @@ func (c *KeuskupanController) List(ctx echo.Context) error {
 	offset := (query.Page - 1) * query.Limit
 	orderBy := "id DESC"
 	if query.Sort != "" {
-		orderBy = query.Sort
+		allowedSorts := map[string]string{
+			"id": "id", "id asc": "id ASC", "id desc": "id DESC",
+			"nama": "nama", "nama asc": "nama ASC", "nama desc": "nama DESC",
+			"created_at": "created_at", "created_at asc": "created_at ASC", "created_at desc": "created_at DESC",
+			"updated_at": "updated_at", "updated_at asc": "updated_at ASC", "updated_at desc": "updated_at DESC",
+		}
+		if val, ok := allowedSorts[strings.ToLower(query.Sort)]; ok {
+			orderBy = val
+		}
 	}
 
 	var keuskupans []models.Keuskupan
