@@ -496,7 +496,7 @@ func (s *SyncController) Pull(c echo.Context) error {
 	log.Printf("📤 Pull request: since=%s", since.Format(time.RFC3339))
 
 	var jurnals []models.Jurnal
-	q := s.db.Preload("DetilJurnal").Where("deleted_at IS NULL").Order("updated_at ASC").Limit(100)
+	q := s.db.Preload("DetilJurnal").Order("updated_at ASC").Limit(100)
 	// MEMBER hanya bisa pull jurnal milik paroki mereka
 	if role, _ := c.Get("role").(string); role == "MEMBER" {
 		if pidStr, _ := c.Get("paroki_id").(string); pidStr != "" {
@@ -513,17 +513,17 @@ func (s *SyncController) Pull(c echo.Context) error {
 
 	// master juga biar web yang kosong dapat paroki/jenis/akun/role
 	var keuskupans []models.Keuskupan
-	s.db.Where("deleted_at IS NULL").Find(&keuskupans)
+	s.db.Find(&keuskupans)
 	var parokis []models.Paroki
-	s.db.Where("deleted_at IS NULL").Find(&parokis)
+	s.db.Find(&parokis)
 	var jenisList []models.Jenis
-	s.db.Where("deleted_at IS NULL").Find(&jenisList)
+	s.db.Find(&jenisList)
 	var akuns []models.Akun
-	s.db.Where("deleted_at IS NULL").Find(&akuns)
+	s.db.Find(&akuns)
 	var roles []models.Role
-	s.db.Where("deleted_at IS NULL").Find(&roles)
+	s.db.Find(&roles)
 	var users []models.User
-	userQuery := s.db.Preload("Role").Where("deleted_at IS NULL")
+	userQuery := s.db.Preload("Role")
 	role, _ := c.Get("role").(string)
 	if role == "MEMBER" {
 		// MEMBER hanya lihat user di paroki yang sama
