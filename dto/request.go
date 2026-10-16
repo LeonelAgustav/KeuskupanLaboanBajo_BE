@@ -95,9 +95,59 @@ type UserUpdateRequest struct {
 	ParokiID *uint   `json:"paroki_id,omitempty"`
 }
 
+type DetilJurnalCreateItem struct {
+	AkunID     uint     `json:"akun_id" validate:"required"`
+	ParokiID   uint     `json:"paroki_id" validate:"required"`
+	Debit      *float64 `json:"debit,omitempty"`
+	Kredit     *float64 `json:"kredit,omitempty"`
+	Keterangan *string  `json:"keterangan,omitempty"`
+}
+
+type JurnalCreateRequest struct {
+	KeuskupanID uint                    `json:"keuskupan_id" validate:"required"`
+	Tanggal     LocalDate               `json:"tanggal" validate:"required"`
+	Deskripsi   *string                 `json:"deskripsi,omitempty"`
+	NoBukti     *string                 `json:"no_bukti,omitempty"`
+	DetilJurnal []DetilJurnalCreateItem `json:"detil_jurnal" validate:"required,dive"`
+}
+
+type JurnalUpdateRequest struct {
+	KeuskupanID *uint                   `json:"keuskupan_id,omitempty"`
+	Tanggal     *LocalDate              `json:"tanggal,omitempty"`
+	Deskripsi   *string                 `json:"deskripsi,omitempty"`
+	NoBukti     *string                 `json:"no_bukti,omitempty"`
+	DetilJurnal []DetilJurnalCreateItem `json:"detil_jurnal,omitempty"`
+}
+
+type ParokiCreateRequest struct {
+	Nama        string `json:"nama" validate:"required,min=2,max=100"`
+	Alamat      string `json:"alamat" validate:"required,max=255"`
+	KeuskupanID uint   `json:"keuskupan_id" validate:"required"`
+	UUID        string `json:"uuid,omitempty"`
+}
+
+type ParokiUpdateRequest struct {
+	Nama        *string `json:"nama,omitempty" validate:"omitempty,min=2,max=100"`
+	Alamat      *string `json:"alamat,omitempty" validate:"omitempty,max=255"`
+	KeuskupanID *uint   `json:"keuskupan_id,omitempty"`
+}
+
+type PembatasanCreateRequest struct {
+	Tipe   string   `json:"tipe" validate:"required,min=2,max=100"`
+	Nilai  *float64 `json:"nilai,omitempty"`
+	AkunID *uint    `json:"akun_id,omitempty"`
+}
+
+type PembatasanUpdateRequest struct {
+	Tipe   *string  `json:"tipe,omitempty" validate:"omitempty,min=2,max=100"`
+	Nilai  *float64 `json:"nilai,omitempty"`
+	AkunID *uint    `json:"akun_id,omitempty"`
+}
+
 type ListQuery struct {
 	Page   int    `query:"page" validate:"omitempty,min=1"`
 	Limit  int    `query:"limit" validate:"omitempty,min=1,max=100"`
 	Sort   string `query:"sort"`
 	Search string `query:"search"`
 }
+

@@ -29,6 +29,7 @@ type User struct {
 
 type Keuskupan struct {
 	ID        uint     `gorm:"primaryKey"`
+	UUID      string   `gorm:"type:varchar(36);uniqueIndex;not null"`
 	Nama      string   `gorm:"not null"`
 	Alamat    string   `gorm:"not null"`
 	Paroki    []Paroki `gorm:"foreignKey:KeuskupanID"`
@@ -36,6 +37,13 @@ type Keuskupan struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+func (k *Keuskupan) BeforeCreate(tx *gorm.DB) error {
+	if k.UUID == "" {
+		k.UUID = uuid.New().String()
+	}
+	return nil
 }
 
 type Paroki struct {
