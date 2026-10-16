@@ -147,6 +147,10 @@ func (c *ParokiController) Create(ctx echo.Context) error {
 		KeuskupanID: req.KeuskupanID,
 	}
 
+	if req.UUID != "" {
+		paroki.UUID = req.UUID
+	}
+
 	if err := c.db.Create(&paroki).Error; err != nil {
 		return err
 	}

@@ -40,6 +40,7 @@ type Keuskupan struct {
 
 type Paroki struct {
 	ID          uint          `gorm:"primaryKey"`
+	UUID        string        `gorm:"type:varchar(36);uniqueIndex;not null"`
 	Nama        string        `gorm:"not null"`
 	Alamat      string        `gorm:"not null"`
 	KeuskupanID uint          `gorm:"index;not null"`
@@ -48,6 +49,13 @@ type Paroki struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+}
+
+func (p *Paroki) BeforeCreate(tx *gorm.DB) error {
+	if p.UUID == "" {
+		p.UUID = uuid.New().String()
+	}
+	return nil
 }
 
 type Jenis struct {

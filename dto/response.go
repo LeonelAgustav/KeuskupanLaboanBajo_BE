@@ -6,6 +6,7 @@ import (
 
 type AkunResponse struct {
 	ID        uint           `json:"id"`
+	UUID      string         `json:"uuid"`
 	Kode      string         `json:"kode"`
 	Nama      string         `json:"nama"`
 	JenisID   uint           `json:"jenis_id"`
@@ -32,6 +33,7 @@ type DetilJurnalResp struct {
 
 type JenisResponse struct {
 	ID        uint      `json:"id"`
+	UUID      string    `json:"uuid"`
 	Nama      string    `json:"nama"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -53,6 +55,7 @@ type JurnalResponse struct {
 
 type KeuskupanResponse struct {
 	ID        uint      `json:"id"`
+	UUID      string    `json:"uuid"`
 	Nama      string    `json:"nama"`
 	Alamat    string    `json:"alamat"`
 	CreatedAt time.Time `json:"created_at"`
@@ -61,6 +64,7 @@ type KeuskupanResponse struct {
 
 type ParokiResponse struct {
 	ID          uint               `json:"id"`
+	UUID        string             `json:"uuid"`
 	Nama        string             `json:"nama"`
 	Alamat      string             `json:"alamat"`
 	KeuskupanID uint               `json:"keuskupan_id"`
@@ -81,6 +85,7 @@ type PembatasanResponse struct {
 
 type RoleResponse struct {
 	ID        uint      `json:"id"`
+	UUID      string    `json:"uuid"`
 	Nama      string    `json:"nama"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -88,6 +93,7 @@ type RoleResponse struct {
 
 type UserResponse struct {
 	ID        uint          `json:"id"`
+	UUID      string        `json:"uuid"`
 	Nama      string        `json:"nama"`
 	Email     string        `json:"email"`
 	Role      *RoleResponse `json:"role,omitempty"`

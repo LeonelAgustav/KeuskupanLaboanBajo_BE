@@ -68,8 +68,9 @@ func (c *KeuskupanController) List(ctx echo.Context) error {
 
 	responses := make([]dto.KeuskupanResponse, len(keuskupans))
 	for i, k := range keuskupans {
-		responses[i] = dto.KeuskupanResponse{
+	responses[i] = dto.KeuskupanResponse{
 			ID:        k.ID,
+			UUID:      k.UUID,
 			Nama:      k.Nama,
 			Alamat:    k.Alamat,
 			CreatedAt: k.CreatedAt,
@@ -102,6 +103,7 @@ func (c *KeuskupanController) Get(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, dto.KeuskupanResponse{
 		ID:        keuskupan.ID,
+		UUID:      keuskupan.UUID,
 		Nama:      keuskupan.Nama,
 		Alamat:    keuskupan.Alamat,
 		CreatedAt: keuskupan.CreatedAt,
@@ -123,6 +125,23 @@ func (c *KeuskupanController) Create(ctx echo.Context) error {
 		Alamat: req.Alamat,
 	}
 
+	if req.UUID != "" {
+		var existing models.Keuskupan
+		if err := c.db.Where("uuid = ?", req.UUID).First(&existing).Error; err == nil {
+			return ctx.JSON(http.StatusOK, dto.CreateResponse{
+				Message: "Data Sudah Ada",
+				Data: dto.KeuskupanResponse{
+					ID:        existing.ID,
+					Nama:      existing.Nama,
+					Alamat:    existing.Alamat,
+					CreatedAt: existing.CreatedAt,
+					UpdatedAt: existing.UpdatedAt,
+				},
+			})
+		}
+		keuskupan.UUID = req.UUID
+	}
+
 	if err := c.db.Create(&keuskupan).Error; err != nil {
 		return err
 	}
@@ -131,6 +150,7 @@ func (c *KeuskupanController) Create(ctx echo.Context) error {
 		Message: "Data Berhasil di Buat",
 		Data: dto.KeuskupanResponse{
 			ID:        keuskupan.ID,
+			UUID:      keuskupan.UUID,
 			Nama:      keuskupan.Nama,
 			Alamat:    keuskupan.Alamat,
 			CreatedAt: keuskupan.CreatedAt,
@@ -176,6 +196,7 @@ func (c *KeuskupanController) Update(ctx echo.Context) error {
 		Message: "Data Berhasil di Perbarui",
 		Data: dto.KeuskupanResponse{
 			ID:        keuskupan.ID,
+			UUID:      keuskupan.UUID,
 			Nama:      keuskupan.Nama,
 			Alamat:    keuskupan.Alamat,
 			CreatedAt: keuskupan.CreatedAt,
