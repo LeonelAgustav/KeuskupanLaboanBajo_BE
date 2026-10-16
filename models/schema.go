@@ -14,6 +14,7 @@ import (
 
 type User struct {
 	ID           uint   `gorm:"primaryKey"`
+	UUID         string `gorm:"type:varchar(36);uniqueIndex;not null"`
 	Nama         string `gorm:"not null;size:255"`
 	Email        string `gorm:"uniqueIndex;not null;size:255"`
 	PasswordHash string `gorm:"not null;size:255" json:"-"`
@@ -25,6 +26,13 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
+}
+
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.UUID == "" {
+		u.UUID = uuid.New().String()
+	}
+	return nil
 }
 
 type Keuskupan struct {
@@ -68,6 +76,7 @@ func (p *Paroki) BeforeCreate(tx *gorm.DB) error {
 
 type Jenis struct {
 	ID        uint   `gorm:"primaryKey"`
+	UUID      string `gorm:"type:varchar(36);uniqueIndex;not null"`
 	Nama      string `gorm:"uniqueIndex;not null;size:100"`
 	Akun      []Akun `gorm:"foreignKey:JenisID"`
 	CreatedAt time.Time
@@ -75,8 +84,16 @@ type Jenis struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
+func (j *Jenis) BeforeCreate(tx *gorm.DB) error {
+	if j.UUID == "" {
+		j.UUID = uuid.New().String()
+	}
+	return nil
+}
+
 type Akun struct {
 	ID          uint          `gorm:"primaryKey"`
+	UUID        string        `gorm:"type:varchar(36);uniqueIndex;not null"`
 	Kode        string        `gorm:"uniqueIndex;not null;size:20"`
 	Nama        string        `gorm:"not null;size:255"`
 	JenisID     uint          `gorm:"index;not null"`
@@ -86,6 +103,13 @@ type Akun struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+}
+
+func (a *Akun) BeforeCreate(tx *gorm.DB) error {
+	if a.UUID == "" {
+		a.UUID = uuid.New().String()
+	}
+	return nil
 }
 
 type Jurnal struct {
