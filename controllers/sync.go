@@ -97,6 +97,14 @@ func strToUint(v interface{}) uint {
 	return 0
 }
 
+// syncUUID: FE kirim UUID di row_id; payload.uuid dipakai kalau row_id kosong.
+func syncUUID(rowID string, dto *string) string {
+	if dto != nil && *dto != "" {
+		return *dto
+	}
+	return rowID
+}
+
 func (s *SyncController) Push(c echo.Context) error {
 	var req PushRequest
 	if err := c.Bind(&req); err != nil {
@@ -208,8 +216,8 @@ func (s *SyncController) Push(c echo.Context) error {
 			}
 		case "keuskupans":
 			if it.Operation == "delete" {
-				if id := strToUint(it.RowID); id != 0 {
-					tx.Where("id = ?", id).Delete(&models.Keuskupan{})
+				if it.RowID != "" {
+					tx.Where("uuid = ?", it.RowID).Delete(&models.Keuskupan{})
 				}
 				continue
 			}
@@ -218,27 +226,30 @@ func (s *SyncController) Push(c echo.Context) error {
 				log.Printf("⚠️ Skip keuskupan %s: DTO invalid", it.RowID)
 				continue
 			}
-			id := strToUint(it.RowID)
-			var k models.Keuskupan
-			if id != 0 {
-				if err := tx.Where("id = ?", id).First(&k).Error; err == nil {
+			uuid := syncUUID(it.RowID, kDTO.UUID)
+			if uuid != "" {
+				var k models.Keuskupan
+				if err := tx.Where("uuid = ?", uuid).First(&k).Error; err == nil {
 					updates := map[string]interface{}{"nama": *kDTO.Nama, "updated_at": time.Now()}
 					if kDTO.Alamat != nil {
 						updates["alamat"] = *kDTO.Alamat
 					}
-					tx.Model(&models.Keuskupan{}).Where("id = ?", id).Updates(updates)
+					tx.Model(&models.Keuskupan{}).Where("uuid = ?", uuid).Updates(updates)
 					continue
 				}
 			}
-			k.Nama = *kDTO.Nama
+			k := models.Keuskupan{Nama: *kDTO.Nama}
+			if uuid != "" {
+				k.UUID = uuid
+			}
 			if kDTO.Alamat != nil {
 				k.Alamat = *kDTO.Alamat
 			}
 			tx.Create(&k)
 		case "parokis":
 			if it.Operation == "delete" {
-				if id := strToUint(it.RowID); id != 0 {
-					tx.Where("id = ?", id).Delete(&models.Paroki{})
+				if it.RowID != "" {
+					tx.Where("uuid = ?", it.RowID).Delete(&models.Paroki{})
 				}
 				continue
 			}
@@ -247,28 +258,30 @@ func (s *SyncController) Push(c echo.Context) error {
 				log.Printf("⚠️ Skip paroki %s: DTO invalid", it.RowID)
 				continue
 			}
-			id := strToUint(it.RowID)
-			var p models.Paroki
-			if id != 0 {
-				if err := tx.Where("id = ?", id).First(&p).Error; err == nil {
+			uuid := syncUUID(it.RowID, pDTO.UUID)
+			if uuid != "" {
+				var p models.Paroki
+				if err := tx.Where("uuid = ?", uuid).First(&p).Error; err == nil {
 					updates := map[string]interface{}{"nama": *pDTO.Nama, "keuskupan_id": *pDTO.KeuskupanID, "updated_at": time.Now()}
 					if pDTO.Alamat != nil {
 						updates["alamat"] = *pDTO.Alamat
 					}
-					tx.Model(&models.Paroki{}).Where("id = ?", id).Updates(updates)
+					tx.Model(&models.Paroki{}).Where("uuid = ?", uuid).Updates(updates)
 					continue
 				}
 			}
-			p.Nama = *pDTO.Nama
-			p.KeuskupanID = *pDTO.KeuskupanID
+			p := models.Paroki{Nama: *pDTO.Nama, KeuskupanID: *pDTO.KeuskupanID}
+			if uuid != "" {
+				p.UUID = uuid
+			}
 			if pDTO.Alamat != nil {
 				p.Alamat = *pDTO.Alamat
 			}
 			tx.Create(&p)
 		case "jenis":
 			if it.Operation == "delete" {
-				if id := strToUint(it.RowID); id != 0 {
-					tx.Where("id = ?", id).Delete(&models.Jenis{})
+				if it.RowID != "" {
+					tx.Where("uuid = ?", it.RowID).Delete(&models.Jenis{})
 				}
 				continue
 			}
@@ -277,20 +290,23 @@ func (s *SyncController) Push(c echo.Context) error {
 				log.Printf("⚠️ Skip jenis %s: DTO invalid", it.RowID)
 				continue
 			}
-			id := strToUint(it.RowID)
-			var j models.Jenis
-			if id != 0 {
-				if err := tx.Where("id = ?", id).First(&j).Error; err == nil {
-					tx.Model(&models.Jenis{}).Where("id = ?", id).Updates(map[string]interface{}{"nama": *jDTO.Nama, "updated_at": time.Now()})
+			uuid := syncUUID(it.RowID, jDTO.UUID)
+			if uuid != "" {
+				var j models.Jenis
+				if err := tx.Where("uuid = ?", uuid).First(&j).Error; err == nil {
+					tx.Model(&models.Jenis{}).Where("uuid = ?", uuid).Updates(map[string]interface{}{"nama": *jDTO.Nama, "updated_at": time.Now()})
 					continue
 				}
 			}
-			j.Nama = *jDTO.Nama
+			j := models.Jenis{Nama: *jDTO.Nama}
+			if uuid != "" {
+				j.UUID = uuid
+			}
 			tx.Create(&j)
 		case "akuns":
 			if it.Operation == "delete" {
-				if id := strToUint(it.RowID); id != 0 {
-					tx.Where("id = ?", id).Delete(&models.Akun{})
+				if it.RowID != "" {
+					tx.Where("uuid = ?", it.RowID).Delete(&models.Akun{})
 				}
 				continue
 			}
@@ -299,20 +315,22 @@ func (s *SyncController) Push(c echo.Context) error {
 				log.Printf("⚠️ Skip akun %s: DTO invalid", it.RowID)
 				continue
 			}
-			id := strToUint(it.RowID)
-			var a models.Akun
-			if id != 0 {
-				if err := tx.Where("id = ?", id).First(&a).Error; err == nil {
+			uuid := syncUUID(it.RowID, aDTO.UUID)
+			if uuid != "" {
+				var a models.Akun
+				if err := tx.Where("uuid = ?", uuid).First(&a).Error; err == nil {
 					updates := map[string]interface{}{"kode": *aDTO.Kode, "jenis_id": *aDTO.JenisID, "updated_at": time.Now()}
 					if aDTO.Nama != nil {
 						updates["nama"] = *aDTO.Nama
 					}
-					tx.Model(&models.Akun{}).Where("id = ?", id).Updates(updates)
+					tx.Model(&models.Akun{}).Where("uuid = ?", uuid).Updates(updates)
 					continue
 				}
 			}
-			a.Kode = *aDTO.Kode
-			a.JenisID = *aDTO.JenisID
+			a := models.Akun{Kode: *aDTO.Kode, JenisID: *aDTO.JenisID}
+			if uuid != "" {
+				a.UUID = uuid
+			}
 			if aDTO.Nama != nil {
 				a.Nama = *aDTO.Nama
 			}

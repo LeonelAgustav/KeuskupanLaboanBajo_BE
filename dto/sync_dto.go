@@ -17,6 +17,7 @@ type DetilJurnalSyncDTO struct {
 }
 
 type MasterSyncDTO struct {
+	UUID        *string `json:"uuid,omitempty"`
 	Nama        *string `json:"nama,omitempty"`
 	Alamat      *string `json:"alamat,omitempty"`
 	KeuskupanID *uint   `json:"keuskupan_id,omitempty"`
