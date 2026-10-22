@@ -166,6 +166,7 @@ func RegisterRoutes(e *echo.Echo, db *gorm.DB) {
 	jurnals := apiGroup.Group("/jurnal")
 	jurnals.POST("", jurnalController.Create)
 	jurnals.GET("", jurnalController.List)
+	jurnals.GET("/buku-besar", jurnalController.BukuBesar)
 	jurnals.GET("/:id", jurnalController.Get)
 	jurnals.PUT("/:id", jurnalController.Update)
 	jurnals.DELETE("/:id", jurnalController.Delete)

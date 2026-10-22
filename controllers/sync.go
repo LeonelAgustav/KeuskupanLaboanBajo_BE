@@ -460,6 +460,9 @@ func (s *SyncController) Push(c echo.Context) error {
 					d.ParokiID = parokiID
 					d.Debit = dDTO.Debit
 					d.Kredit = dDTO.Kredit
+					d.AkunDebitID = dDTO.AkunDebitID
+					d.AkunKreditID = dDTO.AkunKreditID
+					d.Jumlah = dDTO.Jumlah
 					if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
 						if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {
 							uid32 := uint(uid)
@@ -478,6 +481,15 @@ func (s *SyncController) Push(c echo.Context) error {
 					}
 					if dDTO.Kredit != nil {
 						updates["kredit"] = *dDTO.Kredit
+					}
+					if dDTO.AkunDebitID != nil {
+						updates["akun_debit_id"] = *dDTO.AkunDebitID
+					}
+					if dDTO.AkunKreditID != nil {
+						updates["akun_kredit_id"] = *dDTO.AkunKreditID
+					}
+					if dDTO.Jumlah != nil {
+						updates["jumlah"] = *dDTO.Jumlah
 					}
 					if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
 						if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {

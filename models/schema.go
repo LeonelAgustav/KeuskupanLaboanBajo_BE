@@ -143,12 +143,17 @@ type DetilJurnal struct {
 	ID            uint     `gorm:"primaryKey"`
 	JurnalID      string   `gorm:"index;not null;size:50"`
 	Jurnal        Jurnal   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:JurnalID;references:ID"`
-	AkunID        uint     `gorm:"index;not null"`
-	Akun          Akun     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunID;references:ID"`
+	AkunDebitID   *uint    `gorm:"index"`
+	AkunDebit     *Akun    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunDebitID;references:ID"`
+	AkunKreditID  *uint    `gorm:"index"`
+	AkunKredit    *Akun    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunKreditID;references:ID"`
+	Jumlah        *float64 `gorm:"type:decimal(15,2);default:0"`
 	ParokiID      uint     `gorm:"index;not null"`
 	Paroki        Paroki   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:ParokiID;references:ID"`
-	Debit         *float64 `gorm:"type:decimal(15,2);default:0"`
-	Kredit        *float64 `gorm:"type:decimal(15,2);default:0"`
+	AkunID        uint     `gorm:"index;not null"` // shortcut: keep for backward compat, drop after migration complete
+	Akun          Akun     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;foreignKey:AkunID;references:ID"`
+	Debit         *float64 `gorm:"type:decimal(15,2);default:0"` // shortcut: keep for backward compat
+	Kredit        *float64 `gorm:"type:decimal(15,2);default:0"` // shortcut: keep for backward compat
 	Keterangan    *string
 	CreatedBy     *uint    `gorm:"index"`
 	CreatedByUser *User    `gorm:"foreignKey:CreatedBy;references:ID"`

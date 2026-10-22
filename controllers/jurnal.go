@@ -23,6 +23,209 @@ func NewJurnalController(db *gorm.DB) *JurnalController {
 	return &JurnalController{db: db}
 }
 
+func (c *JurnalController) BukuBesar(ctx echo.Context) error {
+	// Query params: keuskupanId, akunId, tahun, bulan, parokiId (optional)
+	keuskupanID := ctx.QueryParam("keuskupanId")
+	akunID := ctx.QueryParam("akunId")
+	tahunStr := ctx.QueryParam("tahun")
+	bulanStr := ctx.QueryParam("bulan")
+	parokiID := ctx.QueryParam("parokiId")
+	// Tetap terima nama lama agar klien lama tidak rusak.
+	if keuskupanID == "" {
+		keuskupanID = ctx.QueryParam("keuskupan_id")
+	}
+	if akunID == "" {
+		akunID = ctx.QueryParam("akun_id")
+	}
+	if parokiID == "" {
+		parokiID = ctx.QueryParam("paroki_id")
+	}
+
+	if keuskupanID == "" || akunID == "" || tahunStr == "" || bulanStr == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Missing required params: keuskupan_id, akun_id, tahun, bulan")
+	}
+
+	keuskupanIDInt, err := strconv.Atoi(keuskupanID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid keuskupan_id")
+	}
+	akunIDInt, err := strconv.Atoi(akunID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid akun_id")
+	}
+	tahun, err := strconv.Atoi(tahunStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid tahun")
+	}
+	bulan, err := strconv.Atoi(bulanStr)
+	if err != nil || bulan < 1 || bulan > 12 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid bulan (1-12)")
+	}
+
+	// MEMBER dipaksa ke paroki sendiri, abaikan query param
+	if role, _ := ctx.Get("role").(string); role == "MEMBER" {
+		pidStr, _ := ctx.Get("paroki_id").(string)
+		if pidStr == "" {
+			return echo.NewHTTPError(http.StatusForbidden, "Paroki tidak ditemukan untuk user")
+		}
+		parokiID = pidStr
+	}
+
+	var parokiIDInt *int
+	if parokiID != "" {
+		parokiIDIntParsed, err := strconv.Atoi(parokiID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid paroki_id")
+		}
+		parokiIDInt = &parokiIDIntParsed
+	}
+
+	var akun models.Akun
+	if err := c.db.Where("id = ? AND deleted_at IS NULL", akunIDInt).First(&akun).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return echo.NewHTTPError(http.StatusNotFound, "Akun tidak ditemukan")
+		}
+		return err
+	}
+
+	// Sisi normal berdasarkan kode awalan
+	kode := akun.Kode
+	prefix := "1"
+	if len(kode) > 0 {
+		prefix = kode[:1]
+	}
+	debitNormal := prefix == "1" || prefix == "5"
+
+	startDate := time.Date(tahun, time.Month(bulan), 1, 0, 0, 0, 0, time.UTC)
+	endDate := startDate.AddDate(0, 1, 0)
+	startStr := startDate.Format("2006-01-02")
+	endStr := endDate.Format("2006-01-02")
+
+	// Saldo awal
+	parokiFilter := ""
+	awalArgs := []interface{}{keuskupanIDInt, akunIDInt, startStr}
+	mutArgs := []interface{}{keuskupanIDInt, akunIDInt, startStr, endStr}
+	if parokiIDInt != nil {
+		parokiFilter = "AND dj.paroki_id = ? "
+		awalArgs = append(awalArgs, *parokiIDInt)
+		mutArgs = append(mutArgs, *parokiIDInt)
+	}
+	var awal struct {
+		TotalDebit  float64 `gorm:"column:total_debit"`
+		TotalKredit float64 `gorm:"column:total_kredit"`
+	}
+	awalErr := c.db.Raw(`
+		SELECT COALESCE(SUM(dj.debit), 0) AS total_debit,
+			   COALESCE(SUM(dj.kredit), 0) AS total_kredit
+		FROM (
+			SELECT id, jurnal_id, paroki_id, keterangan, created_at, deleted_at,
+			       COALESCE(akun_debit_id, akun_id) AS akun_id,
+			       CASE WHEN akun_debit_id IS NOT NULL THEN COALESCE(jumlah, 0) ELSE COALESCE(debit, 0) END AS debit,
+			       CASE WHEN akun_debit_id IS NOT NULL THEN 0 ELSE COALESCE(kredit, 0) END AS kredit
+			FROM detil_jurnal
+			UNION ALL
+			SELECT id, jurnal_id, paroki_id, keterangan, created_at, deleted_at,
+			       akun_kredit_id AS akun_id, 0 AS debit, COALESCE(jumlah, 0) AS kredit
+			FROM detil_jurnal
+			WHERE akun_kredit_id IS NOT NULL
+		) dj
+		INNER JOIN jurnals j ON dj.jurnal_id = j.id
+		WHERE j.keuskupan_id = ?
+		  AND dj.akun_id = ?
+		  AND j.tanggal < ?
+		  AND j.deleted_at IS NULL
+		  AND dj.deleted_at IS NULL
+		`+parokiFilter,
+		awalArgs...,
+	).Scan(&awal).Error
+	if awalErr != nil {
+		return awalErr
+	}
+	awalDebit, awalKredit := awal.TotalDebit, awal.TotalKredit
+
+	saldoAwal := 0.0
+	if debitNormal {
+		saldoAwal = awalDebit - awalKredit
+	} else {
+		saldoAwal = awalKredit - awalDebit
+	}
+
+	// Mutasi dalam periode
+	type MutasiRow struct {
+		Tanggal    string
+		NoBukti    *string
+		Deskripsi  *string
+		Debit      float64
+		Kredit     float64
+		Keterangan *string
+	}
+	var mutRows []MutasiRow
+	query := `
+		SELECT j.tanggal AS tanggal,
+			   j.no_bukti AS no_bukti,
+			   j.deskripsi AS deskripsi,
+			   COALESCE(dj.debit, 0) AS debit,
+			   COALESCE(dj.kredit, 0) AS kredit,
+			   dj.keterangan AS keterangan
+		FROM (
+			SELECT id, jurnal_id, paroki_id, keterangan, created_at, deleted_at,
+			       COALESCE(akun_debit_id, akun_id) AS akun_id,
+			       CASE WHEN akun_debit_id IS NOT NULL THEN COALESCE(jumlah, 0) ELSE COALESCE(debit, 0) END AS debit,
+			       CASE WHEN akun_debit_id IS NOT NULL THEN 0 ELSE COALESCE(kredit, 0) END AS kredit
+			FROM detil_jurnal
+			UNION ALL
+			SELECT id, jurnal_id, paroki_id, keterangan, created_at, deleted_at,
+			       akun_kredit_id AS akun_id, 0 AS debit, COALESCE(jumlah, 0) AS kredit
+			FROM detil_jurnal
+			WHERE akun_kredit_id IS NOT NULL
+		) dj
+		INNER JOIN jurnals j ON dj.jurnal_id = j.id
+		WHERE j.keuskupan_id = ?
+		  AND dj.akun_id = ?
+		  AND j.tanggal >= ?
+		  AND j.tanggal < ?
+		  AND j.deleted_at IS NULL
+		  AND dj.deleted_at IS NULL
+		` + parokiFilter + `
+		ORDER BY j.tanggal, dj.created_at, dj.id
+	`
+	queryErr := c.db.Raw(query, mutArgs...).Scan(&mutRows).Error
+	if queryErr != nil {
+		return queryErr
+	}
+
+	mutasi := []dto.BukuBesarMutasi{}
+	saldo := saldoAwal
+	for _, r := range mutRows {
+		if debitNormal {
+			saldo = saldo + r.Debit - r.Kredit
+		} else {
+			saldo = saldo + r.Kredit - r.Debit
+		}
+		uraian := r.Deskripsi
+		if uraian == nil || *uraian == "" {
+			uraian = r.Keterangan
+		}
+		mutasi = append(mutasi, dto.BukuBesarMutasi{
+			Tanggal: r.Tanggal,
+			NoBukti: r.NoBukti,
+			Uraian:  uraian,
+			Debit:   r.Debit,
+			Kredit:  r.Kredit,
+			Saldo:   saldo,
+		})
+	}
+
+	return ctx.JSON(http.StatusOK, dto.BukuBesarResponse{
+		AkunID:     akun.ID,
+		AkunKode:   akun.Kode,
+		AkunNama:   akun.Nama,
+		SaldoAwal:  saldoAwal,
+		Mutasi:     mutasi,
+		SaldoAkhir: saldo,
+	})
+}
+
 func (c *JurnalController) List(ctx echo.Context) error {
 	var query dto.ListQuery
 	if err := ctx.Bind(&query); err != nil {
@@ -140,6 +343,7 @@ func (c *JurnalController) loadDetilJurnal(jurnalIDs []string) map[string][]dto.
 
 	query := `
 		SELECT dj.id, dj.jurnal_id, dj.akun_id, dj.paroki_id, dj.debit, dj.kredit, dj.keterangan, dj.created_by, dj.updated_by, dj.created_at, dj.updated_at,
+		       dj.akun_debit_id, dj.akun_kredit_id, dj.jumlah,
 		       a.id as akun_id2, a.kode, a.nama, a.jenis_id, a.created_at as akun_created_at, a.updated_at as akun_updated_at,
 		       p.id as paroki_id2, p.nama as paroki_nama, p.alamat, p.keuskupan_id, p.created_at as paroki_created_at, p.updated_at as paroki_updated_at
 		FROM detil_jurnal dj
@@ -164,6 +368,7 @@ func (c *JurnalController) loadDetilJurnal(jurnalIDs []string) map[string][]dto.
 
 		if err := rows.Scan(
 			&d.ID, &d.JurnalID, &d.AkunID, &d.ParokiID, &d.Debit, &d.Kredit, &d.Keterangan, &d.CreatedBy, &d.UpdatedBy, &d.CreatedAt, &d.UpdatedAt,
+			&d.AkunDebitID, &d.AkunKreditID, &d.Jumlah,
 			&akunID, &kode, &nama, &jenisID, &akunCreatedAt, &akunUpdatedAt,
 			&parokiID, &parokiNama, &alamat, &keuskupanID, &parokiCreatedAt, &parokiUpdatedAt,
 		); err != nil {
@@ -171,8 +376,11 @@ func (c *JurnalController) loadDetilJurnal(jurnalIDs []string) map[string][]dto.
 		}
 
 		resp := dto.DetilJurnalResp{
-			ID:         d.ID,
-			JurnalID:   d.JurnalID,
+			ID:           d.ID,
+			JurnalID:     d.JurnalID,
+			AkunDebitID:  d.AkunDebitID,
+			AkunKreditID: d.AkunKreditID,
+			Jumlah:       d.Jumlah,
 			AkunID:     d.AkunID,
 			ParokiID:   d.ParokiID,
 			Debit:      d.Debit,
@@ -305,6 +513,9 @@ func (c *JurnalController) Create(ctx echo.Context) error {
 				Debit:      d.Debit,
 				Kredit:     d.Kredit,
 				Keterangan: d.Keterangan,
+				AkunDebitID:  d.AkunDebitID,
+				AkunKreditID: d.AkunKreditID,
+				Jumlah:       d.Jumlah,
 			}
 			if err := tx.Create(&detil).Error; err != nil {
 				return err
@@ -412,20 +623,20 @@ func (c *JurnalController) Update(ctx echo.Context) error {
 				return err
 			}
 		}
-		
+
 		if req.DetilJurnal != nil {
 			// Delete old detil_jurnal
 			if err := tx.Where("jurnal_id = ?", id).Delete(&models.DetilJurnal{}).Error; err != nil {
 				return err
 			}
 			// Insert new detil_jurnal
-			insertQuery := `INSERT INTO detil_jurnal (jurnal_id, akun_id, paroki_id, debit, kredit, keterangan, created_by, updated_by, created_at, updated_at) 
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`
+			insertQuery := `INSERT INTO detil_jurnal (jurnal_id, akun_id, paroki_id, debit, kredit, keterangan, created_by, updated_by, akun_debit_id, akun_kredit_id, jumlah, created_at, updated_at) 
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`
 			for _, d := range req.DetilJurnal {
 				if memberParokiID != 0 && d.ParokiID != memberParokiID {
 					return echo.NewHTTPError(http.StatusForbidden, "MEMBER hanya bisa menambah jurnal untuk parokinya sendiri")
 				}
-				if err := tx.Exec(insertQuery, id, d.AkunID, d.ParokiID, d.Debit, d.Kredit, d.Keterangan, createdBy, updatedBy).Error; err != nil {
+				if err := tx.Exec(insertQuery, id, d.AkunID, d.ParokiID, d.Debit, d.Kredit, d.Keterangan, createdBy, updatedBy, d.AkunDebitID, d.AkunKreditID, d.Jumlah).Error; err != nil {
 					return err
 				}
 			}
@@ -540,8 +751,11 @@ func (c *JurnalController) ListDetil(ctx echo.Context) error {
 	responses := make([]dto.DetilJurnalResp, len(detils))
 	for i, d := range detils {
 		responses[i] = dto.DetilJurnalResp{
-			ID:         d.ID,
-			JurnalID:   d.JurnalID,
+			ID:           d.ID,
+			JurnalID:     d.JurnalID,
+			AkunDebitID:  d.AkunDebitID,
+			AkunKreditID: d.AkunKreditID,
+			Jumlah:       d.Jumlah,
 			AkunID:     d.AkunID,
 			ParokiID:   d.ParokiID,
 			Debit:      d.Debit,
@@ -582,5 +796,3 @@ func (c *JurnalController) ListDetil(ctx echo.Context) error {
 		TotalPages: int((total + int64(query.Limit) - 1) / int64(query.Limit)),
 	})
 }
-
-

@@ -15,20 +15,43 @@ type AkunResponse struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 }
 
+type BukuBesarMutasi struct {
+	Tanggal string  `json:"tanggal"`
+	NoBukti *string `json:"no_bukti,omitempty"`
+	Uraian  *string `json:"uraian,omitempty"`
+	Debit   float64 `json:"debit"`
+	Kredit  float64 `json:"kredit"`
+	Saldo   float64 `json:"saldo"`
+}
+
+type BukuBesarResponse struct {
+	AkunID     uint              `json:"akun_id"`
+	AkunKode   string            `json:"akun_kode"`
+	AkunNama   string            `json:"akun_nama"`
+	SaldoAwal  float64           `json:"saldo_awal"`
+	Mutasi     []BukuBesarMutasi `json:"mutasi"`
+	SaldoAkhir float64           `json:"saldo_akhir"`
+}
+
 type DetilJurnalResp struct {
-	ID         uint             `json:"id"`
-	JurnalID   string           `json:"jurnal_id"`
-	AkunID     uint             `json:"akun_id"`
-	Akun       *AkunResponse    `json:"akun,omitempty"`
-	ParokiID   uint             `json:"paroki_id"`
-	Paroki     *ParokiResponse  `json:"paroki,omitempty"`
-	Debit      *float64         `json:"debit,omitempty"`
-	Kredit     *float64         `json:"kredit,omitempty"`
-	Keterangan *string          `json:"keterangan,omitempty"`
-	CreatedBy  *uint            `json:"created_by,omitempty"`
-	UpdatedBy  *uint            `json:"updated_by,omitempty"`
-	CreatedAt  time.Time        `json:"created_at"`
-	UpdatedAt  time.Time        `json:"updated_at"`
+	ID           uint            `json:"id"`
+	JurnalID     string          `json:"jurnal_id"`
+	ParokiID     uint            `json:"paroki_id"`
+	Paroki       *ParokiResponse `json:"paroki,omitempty"`
+	AkunDebitID  *uint           `json:"akun_debit_id,omitempty"`
+	AkunDebit    *AkunResponse   `json:"akun_debit,omitempty"`
+	AkunKreditID *uint           `json:"akun_kredit_id,omitempty"`
+	AkunKredit   *AkunResponse   `json:"akun_kredit,omitempty"`
+	Jumlah       *float64        `json:"jumlah,omitempty"`
+	AkunID       uint            `json:"akun_id"` // shortcut: backward compat, drop setelah migrasi
+	Akun         *AkunResponse   `json:"akun,omitempty"` // shortcut: backward compat
+	Debit        *float64        `json:"debit,omitempty"` // shortcut: backward compat
+	Kredit       *float64        `json:"kredit,omitempty"` // shortcut: backward compat
+	Keterangan   *string         `json:"keterangan,omitempty"`
+	CreatedBy    *uint           `json:"created_by,omitempty"`
+	UpdatedBy    *uint           `json:"updated_by,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
 type JenisResponse struct {
@@ -92,15 +115,15 @@ type RoleResponse struct {
 }
 
 type UserResponse struct {
-	ID        uint          `json:"id"`
-	UUID      string        `json:"uuid"`
-	Nama      string        `json:"nama"`
-	Email     string        `json:"email"`
-	Role      *RoleResponse `json:"role,omitempty"`
-	ParokiID  *uint         `json:"paroki_id,omitempty"`
+	ID        uint            `json:"id"`
+	UUID      string          `json:"uuid"`
+	Nama      string          `json:"nama"`
+	Email     string          `json:"email"`
+	Role      *RoleResponse   `json:"role,omitempty"`
+	ParokiID  *uint           `json:"paroki_id,omitempty"`
 	Paroki    *ParokiResponse `json:"paroki,omitempty"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 type ListResponse struct {

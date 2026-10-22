@@ -8,12 +8,15 @@ type JurnalSyncDTO struct {
 }
 
 type DetilJurnalSyncDTO struct {
-	JurnalID   string   `json:"jurnal_id" validate:"required"`
-	AkunID     uint     `json:"akun_id" validate:"required"`
-	ParokiID   uint     `json:"paroki_id" validate:"required"`
-	Debit      *float64 `json:"debit,omitempty"`
-	Kredit     *float64 `json:"kredit,omitempty"`
-	Keterangan *string  `json:"keterangan,omitempty"`
+	JurnalID     string   `json:"jurnal_id" validate:"required"`
+	AkunID       uint     `json:"akun_id" validate:"required"`
+	ParokiID     uint     `json:"paroki_id" validate:"required"`
+	AkunDebitID  *uint    `json:"akun_debit_id,omitempty"`
+	AkunKreditID *uint    `json:"akun_kredit_id,omitempty"`
+	Jumlah       *float64 `json:"jumlah,omitempty"`
+	Debit        *float64 `json:"debit,omitempty"`
+	Kredit       *float64 `json:"kredit,omitempty"`
+	Keterangan   *string  `json:"keterangan,omitempty"`
 }
 
 type MasterSyncDTO struct {
