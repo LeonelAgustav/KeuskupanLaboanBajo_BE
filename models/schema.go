@@ -120,6 +120,8 @@ type Jurnal struct {
 	Tanggal       time.Time     `gorm:"index;not null"`
 	Deskripsi     *string       `gorm:"size:500"`
 	NoBukti       *string       `gorm:"uniqueIndex;size:50"`
+	// Klasifikasi ISAK 35 per transaksi: "Tanpa Pembatasan" (default) atau "Dengan Pembatasan"
+	JenisPembatasan string      `gorm:"size:20;not null;default:'Tanpa Pembatasan'"`
 	CreatedBy     *uint         `gorm:"index"`
 	CreatedByUser *User         `gorm:"foreignKey:CreatedBy;references:ID"`
 	UpdatedBy     *uint         `gorm:"index"`

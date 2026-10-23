@@ -296,16 +296,17 @@ func (c *JurnalController) List(ctx echo.Context) error {
 	for i, j := range jurals {
 		detils := detilMap[j.ID]
 		responses[i] = dto.JurnalResponse{
-			ID:          j.ID,
-			KeuskupanID: j.KeuskupanID,
-			Tanggal:     j.Tanggal,
-			Deskripsi:   j.Deskripsi,
-			NoBukti:     j.NoBukti,
-			DetilJurnal: detils,
-			CreatedBy:   j.CreatedBy,
-			UpdatedBy:   j.UpdatedBy,
-			CreatedAt:   j.CreatedAt,
-			UpdatedAt:   j.UpdatedAt,
+			ID:              j.ID,
+			KeuskupanID:     j.KeuskupanID,
+			Tanggal:         j.Tanggal,
+			Deskripsi:       j.Deskripsi,
+			NoBukti:         j.NoBukti,
+			JenisPembatasan: j.JenisPembatasan,
+			DetilJurnal:     detils,
+			CreatedBy:       j.CreatedBy,
+			UpdatedBy:       j.UpdatedBy,
+			CreatedAt:       j.CreatedAt,
+			UpdatedAt:       j.UpdatedAt,
 		}
 		if j.Keuskupan.ID != 0 {
 			responses[i].Keuskupan = &dto.KeuskupanResponse{
@@ -425,7 +426,7 @@ func (c *JurnalController) Get(ctx echo.Context) error {
 
 	var jurnal models.Jurnal
 	// Use raw SQL to avoid UUID parsing issue
-	query := `SELECT id, keuskupan_id, tanggal, deskripsi, no_bukti, created_by, updated_by, created_at, updated_at FROM jurnal WHERE id = ?`
+	query := `SELECT id, keuskupan_id, tanggal, deskripsi, no_bukti, jenis_pembatasan, created_by, updated_by, created_at, updated_at FROM jurnal WHERE id = ?`
 	if err := c.db.Raw(query, id).Scan(&jurnal).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return echo.NewHTTPError(http.StatusNotFound, "Jurnal tidak ditemukan")
@@ -445,16 +446,17 @@ func (c *JurnalController) Get(ctx echo.Context) error {
 	detils := detilMap[id]
 
 	resp := dto.JurnalResponse{
-		ID:          jurnal.ID,
-		KeuskupanID: jurnal.KeuskupanID,
-		Tanggal:     jurnal.Tanggal,
-		Deskripsi:   jurnal.Deskripsi,
-		NoBukti:     jurnal.NoBukti,
-		DetilJurnal: detils,
-		CreatedBy:   jurnal.CreatedBy,
-		UpdatedBy:   jurnal.UpdatedBy,
-		CreatedAt:   jurnal.CreatedAt,
-		UpdatedAt:   jurnal.UpdatedAt,
+		ID:              jurnal.ID,
+		KeuskupanID:     jurnal.KeuskupanID,
+		Tanggal:         jurnal.Tanggal,
+		Deskripsi:       jurnal.Deskripsi,
+		NoBukti:         jurnal.NoBukti,
+		JenisPembatasan: jurnal.JenisPembatasan,
+		DetilJurnal:     detils,
+		CreatedBy:       jurnal.CreatedBy,
+		UpdatedBy:       jurnal.UpdatedBy,
+		CreatedAt:       jurnal.CreatedAt,
+		UpdatedAt:       jurnal.UpdatedAt,
 	}
 	if keuskupan.ID != 0 {
 		resp.Keuskupan = &dto.KeuskupanResponse{
@@ -492,11 +494,15 @@ func (c *JurnalController) Create(ctx echo.Context) error {
 
 	err := c.db.Transaction(func(tx *gorm.DB) error {
 		jurnal := models.Jurnal{
-			ID:          jurnalID,
-			KeuskupanID: req.KeuskupanID,
-			Tanggal:     req.Tanggal.Time,
-			Deskripsi:   req.Deskripsi,
-			NoBukti:     req.NoBukti,
+			ID:              jurnalID,
+			KeuskupanID:     req.KeuskupanID,
+			Tanggal:         req.Tanggal.Time,
+			Deskripsi:       req.Deskripsi,
+			NoBukti:         req.NoBukti,
+			JenisPembatasan: "Tanpa Pembatasan",
+		}
+		if req.JenisPembatasan != nil && *req.JenisPembatasan != "" {
+			jurnal.JenisPembatasan = *req.JenisPembatasan
 		}
 		if err := tx.Create(&jurnal).Error; err != nil {
 			return err
@@ -529,7 +535,7 @@ func (c *JurnalController) Create(ctx echo.Context) error {
 
 	var created models.Jurnal
 	// Use raw SQL to avoid UUID parsing issue
-	query := `SELECT id, keuskupan_id, tanggal, deskripsi, no_bukti, created_at, updated_at FROM jurnal WHERE id = ?`
+	query := `SELECT id, keuskupan_id, tanggal, deskripsi, no_bukti, jenis_pembatasan, created_at, updated_at FROM jurnal WHERE id = ?`
 	if err := c.db.Raw(query, jurnalID).Scan(&created).Error; err != nil {
 		return err
 	}
@@ -548,14 +554,15 @@ func (c *JurnalController) Create(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, dto.CreateResponse{
 		Message: "Data Berhasil di Buat",
 		Data: dto.JurnalResponse{
-			ID:          created.ID,
-			KeuskupanID: created.KeuskupanID,
-			Tanggal:     created.Tanggal,
-			Deskripsi:   created.Deskripsi,
-			NoBukti:     created.NoBukti,
-			DetilJurnal: detils,
-			CreatedAt:   created.CreatedAt,
-			UpdatedAt:   created.UpdatedAt,
+			ID:              created.ID,
+			KeuskupanID:     created.KeuskupanID,
+			Tanggal:         created.Tanggal,
+			Deskripsi:       created.Deskripsi,
+			NoBukti:         created.NoBukti,
+			JenisPembatasan: created.JenisPembatasan,
+			DetilJurnal:     detils,
+			CreatedAt:       created.CreatedAt,
+			UpdatedAt:       created.UpdatedAt,
 		},
 	})
 }
@@ -615,6 +622,9 @@ func (c *JurnalController) Update(ctx echo.Context) error {
 		if req.NoBukti != nil {
 			updates["no_bukti"] = *req.NoBukti
 		}
+		if req.JenisPembatasan != nil && *req.JenisPembatasan != "" {
+			updates["jenis_pembatasan"] = *req.JenisPembatasan
+		}
 		if updatedBy != nil {
 			updates["updated_by"] = *updatedBy
 		}
@@ -649,7 +659,7 @@ func (c *JurnalController) Update(ctx echo.Context) error {
 
 	var updated models.Jurnal
 	// Use raw SQL to avoid UUID parsing issue
-	query := `SELECT id, keuskupan_id, tanggal, deskripsi, no_bukti, created_by, updated_by, created_at, updated_at FROM jurnal WHERE id = ?`
+	query := `SELECT id, keuskupan_id, tanggal, deskripsi, no_bukti, jenis_pembatasan, created_by, updated_by, created_at, updated_at FROM jurnal WHERE id = ?`
 	if err := c.db.Raw(query, id).Scan(&updated).Error; err != nil {
 		return err
 	}
@@ -668,16 +678,17 @@ func (c *JurnalController) Update(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Data Berhasil di Perbarui",
 		"data": dto.JurnalResponse{
-			ID:          updated.ID,
-			KeuskupanID: updated.KeuskupanID,
-			Tanggal:     updated.Tanggal,
-			Deskripsi:   updated.Deskripsi,
-			NoBukti:     updated.NoBukti,
-			DetilJurnal: detils,
-			CreatedBy:   updated.CreatedBy,
-			UpdatedBy:   updated.UpdatedBy,
-			CreatedAt:   updated.CreatedAt,
-			UpdatedAt:   updated.UpdatedAt,
+			ID:              updated.ID,
+			KeuskupanID:     updated.KeuskupanID,
+			Tanggal:         updated.Tanggal,
+			Deskripsi:       updated.Deskripsi,
+			NoBukti:         updated.NoBukti,
+			JenisPembatasan: updated.JenisPembatasan,
+			DetilJurnal:     detils,
+			CreatedBy:       updated.CreatedBy,
+			UpdatedBy:       updated.UpdatedBy,
+			CreatedAt:       updated.CreatedAt,
+			UpdatedAt:       updated.UpdatedAt,
 		},
 	})
 }

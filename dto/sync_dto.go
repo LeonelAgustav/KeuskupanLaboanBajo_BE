@@ -1,10 +1,11 @@
 package dto
 
 type JurnalSyncDTO struct {
-	KeuskupanID uint    `json:"keuskupan_id" validate:"required"`
-	Tanggal     string  `json:"tanggal" validate:"required"`
-	Deskripsi   *string `json:"deskripsi,omitempty"`
-	NoBukti     *string `json:"no_bukti,omitempty"`
+	KeuskupanID      uint    `json:"keuskupan_id" validate:"required"`
+	Tanggal          string  `json:"tanggal" validate:"required"`
+	Deskripsi        *string `json:"deskripsi,omitempty"`
+	NoBukti          *string `json:"no_bukti,omitempty"`
+	JenisPembatasan  *string `json:"jenis_pembatasan,omitempty" validate:"omitempty,oneof='Tanpa Pembatasan' 'Dengan Pembatasan'"`
 }
 
 type DetilJurnalSyncDTO struct {

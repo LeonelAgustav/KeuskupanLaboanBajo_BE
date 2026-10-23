@@ -107,19 +107,21 @@ type DetilJurnalCreateItem struct {
 }
 
 type JurnalCreateRequest struct {
-	KeuskupanID uint                    `json:"keuskupan_id" validate:"required"`
-	Tanggal     LocalDate               `json:"tanggal" validate:"required"`
-	Deskripsi   *string                 `json:"deskripsi,omitempty"`
-	NoBukti     *string                 `json:"no_bukti,omitempty"`
-	DetilJurnal []DetilJurnalCreateItem `json:"detil_jurnal" validate:"required,dive"`
+	KeuskupanID     uint                    `json:"keuskupan_id" validate:"required"`
+	Tanggal         LocalDate               `json:"tanggal" validate:"required"`
+	Deskripsi       *string                 `json:"deskripsi,omitempty"`
+	NoBukti         *string                 `json:"no_bukti,omitempty"`
+	JenisPembatasan *string                 `json:"jenis_pembatasan,omitempty" validate:"omitempty,oneof='Tanpa Pembatasan' 'Dengan Pembatasan'"`
+	DetilJurnal     []DetilJurnalCreateItem `json:"detil_jurnal" validate:"required,dive"`
 }
 
 type JurnalUpdateRequest struct {
-	KeuskupanID *uint                   `json:"keuskupan_id,omitempty"`
-	Tanggal     *LocalDate              `json:"tanggal,omitempty"`
-	Deskripsi   *string                 `json:"deskripsi,omitempty"`
-	NoBukti     *string                 `json:"no_bukti,omitempty"`
-	DetilJurnal []DetilJurnalCreateItem `json:"detil_jurnal,omitempty"`
+	KeuskupanID     *uint                   `json:"keuskupan_id,omitempty"`
+	Tanggal         *LocalDate              `json:"tanggal,omitempty"`
+	Deskripsi       *string                 `json:"deskripsi,omitempty"`
+	NoBukti         *string                 `json:"no_bukti,omitempty"`
+	JenisPembatasan *string                 `json:"jenis_pembatasan,omitempty" validate:"omitempty,oneof='Tanpa Pembatasan' 'Dengan Pembatasan'"`
+	DetilJurnal     []DetilJurnalCreateItem `json:"detil_jurnal,omitempty"`
 }
 
 type ParokiCreateRequest struct {

@@ -63,17 +63,18 @@ type JenisResponse struct {
 }
 
 type JurnalResponse struct {
-	ID          string             `json:"id"`
-	KeuskupanID uint               `json:"keuskupan_id"`
-	Keuskupan   *KeuskupanResponse `json:"keuskupan,omitempty"`
-	Tanggal     time.Time          `json:"tanggal"`
-	Deskripsi   *string            `json:"deskripsi,omitempty"`
-	NoBukti     *string            `json:"no_bukti,omitempty"`
-	DetilJurnal []DetilJurnalResp  `json:"detil_jurnal,omitempty"`
-	CreatedBy   *uint              `json:"created_by,omitempty"`
-	UpdatedBy   *uint              `json:"updated_by,omitempty"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+	ID              string             `json:"id"`
+	KeuskupanID     uint               `json:"keuskupan_id"`
+	Keuskupan       *KeuskupanResponse `json:"keuskupan,omitempty"`
+	Tanggal         time.Time          `json:"tanggal"`
+	Deskripsi       *string            `json:"deskripsi,omitempty"`
+	NoBukti         *string            `json:"no_bukti,omitempty"`
+	JenisPembatasan string             `json:"jenis_pembatasan"`
+	DetilJurnal     []DetilJurnalResp  `json:"detil_jurnal,omitempty"`
+	CreatedBy       *uint              `json:"created_by,omitempty"`
+	UpdatedBy       *uint              `json:"updated_by,omitempty"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
 }
 
 type KeuskupanResponse struct {

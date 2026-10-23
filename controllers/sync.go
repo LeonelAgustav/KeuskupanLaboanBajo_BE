@@ -176,6 +176,9 @@ func (s *SyncController) Push(c echo.Context) error {
 				}
 				j.Deskripsi = jDTO.Deskripsi
 				j.NoBukti = jDTO.NoBukti
+				if jDTO.JenisPembatasan != nil && *jDTO.JenisPembatasan != "" {
+					j.JenisPembatasan = *jDTO.JenisPembatasan
+				}
 				if uidStr, _ := c.Get("user_id").(string); uidStr != "" {
 					if uid, err := strconv.ParseUint(uidStr, 10, 32); err == nil {
 						uid32 := uint(uid)
