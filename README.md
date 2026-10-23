@@ -23,25 +23,6 @@ Sistem Jurnal Keuangan Keuskupan Labuan Bajo - Offline First. REST API untuk sin
 | `github.com/joho/godotenv` | v1.5.1 | Baca konfigurasi dari file `.env` |
 | `golang.org/x/crypto` | v0.55.0 | Hashing password (bcrypt) |
 
-### Tidak Langsung (transitif)
-| Package | Fungsi |
-|---------|--------|
-| `github.com/go-sql-driver/mysql` | Driver MySQL level rendah |
-| `filippo.io/edwards25519` | Kriptografi kurva Edwards (dipakai driver MySQL) |
-| `github.com/gabriel-vasile/mimetype`, `github.com/go-playground/locales`, `universal-translator`, `github.com/leodido/go-urn` | Dependensi validator |
-| `github.com/jinzhu/inflection`, `github.com/jinzhu/now` | Helper GORM (pluralisasi, waktu) |
-| `github.com/labstack/gommon`, `github.com/mattn/go-colorable`, `github.com/mattn/go-isatty`, `github.com/valyala/bytebufferpool`, `github.com/valyala/fasttemplate` | Dependensi Echo |
-| `golang.org/x/net`, `golang.org/x/sys`, `golang.org/x/text`, `golang.org/x/time` | Library standar ekstensi Go |
-
-## Konfigurasi Env
-| Variabel | Default | Catatan |
-|----------|---------|---------|
-| `PORT` | `8080` | Port server |
-| `BIND_ADDR` | `0.0.0.0` | Bind address. `0.0.0.0` agar bisa diakses HP di WiFi yang sama |
-| `JWT_SECRET` | dev-secret | **Wajib diganti di production** |
-| `DB_PASS` | `ARCS` | **Wajib diganti di production** |
-| `APP_ENV` | - | Set `production` untuk aktifkan validasi env ketat |
-
 ## Cara Menjalankan
 ```bash
 go run main.go
