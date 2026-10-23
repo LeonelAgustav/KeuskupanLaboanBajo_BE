@@ -28,6 +28,7 @@ Sistem Jurnal Keuangan Keuskupan Labuan Bajo - Offline First. REST API untuk sin
 go run main.go
 ```
 
+
 Untuk dev di jaringan lokal (HP + laptop satu WiFi), pastikan `BIND_ADDR=0.0.0.0` dan izinkan port `8080` di Windows Firewall.
 
 ## Endpoint Utama
